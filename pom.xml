@@ -34,10 +34,6 @@
 			<artifactId>spring-boot-starter-web</artifactId> <!-- Correction : spring-boot-starter-web -->
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-mail</artifactId> <!-- Envoi d'emails (OTP, identifiants) -->
-		</dependency>
-		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-crypto</artifactId> <!-- Hachage BCrypt des mots de passe -->
 			<version>6.2.1</version>
