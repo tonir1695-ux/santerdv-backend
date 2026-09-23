@@ -1,33 +1,68 @@
 package com.santerdv.santerdvapi;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
- * Service d'envoi d'emails (vérification OTP à l'inscription,
- * envoi des identifiants lors de la création d'un compte médecin/réceptionniste
- * par l'administrateur, et notifications de rendez-vous).
- *
- * Configuration réelle via SMTP (voir application.properties).
- * Contrairement au SmsService, celui-ci envoie de VRAIS emails :
- * il faut donc que les identifiants SMTP soient correctement renseignés
- * (variables d'environnement MAIL_USERNAME / MAIL_PASSWORD sur Render).
+ * Service d'envoi d'emails via l'API HTTP de Brevo (et non le SMTP direct :
+ * Render bloque les connexions SMTP sortantes sur son infrastructure gratuite,
+ * l'API HTTP passe par le port 443 qui n'est jamais bloqué).
  */
 @Service
 public class EmailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    @Value("${brevo.api.key}")
+    private String brevoApiKey;
+
+    @Value("${brevo.sender.email}")
+    private String senderEmail;
+
+    @Value("${brevo.sender.name:Santé RDV}")
+    private String senderName;
+
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public void envoyerEmail(String destinataire, String sujet, String contenu) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(destinataire);
-            message.setSubject(sujet);
-            message.setText(contenu);
-            mailSender.send(message);
+            Map<String, Object> body = new HashMap<>();
+            body.put("sender", Map.of("name", senderName, "email", senderEmail));
+            body.put("to", List.of(Map.of("email", destinataire)));
+            body.put("subject", sujet);
+            body.put("textContent", contenu);
+
+            String jsonBody = objectMapper.writeValueAsString(body);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("accept", "application/json")
+                    .header("api-key", brevoApiKey)
+                    .header("content-type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                System.out.println("[EmailService] Email envoyé à " + destinataire);
+            } else {
+                System.err.println("[EmailService] Échec d'envoi à " + destinataire
+                        + " — code " + response.statusCode() + " : " + response.body());
+            }
         } catch (Exception e) {
             // On ne fait pas planter la requête si l'email échoue :
             // on log l'erreur pour diagnostic (à surveiller dans les logs Render).
