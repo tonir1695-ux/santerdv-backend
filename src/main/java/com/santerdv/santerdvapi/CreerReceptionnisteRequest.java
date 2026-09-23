@@ -4,7 +4,6 @@ public class CreerReceptionnisteRequest {
     private String nom;
     private String prenom;
     private String email;
-    private String motDePasse;
     private String telephone;
 
     public String getNom() { return nom; }
@@ -15,9 +14,6 @@ public class CreerReceptionnisteRequest {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
-    public String getMotDePasse() { return motDePasse; }
-    public void setMotDePasse(String motDePasse) { this.motDePasse = motDePasse; }
 
     public String getTelephone() { return telephone; }
     public void setTelephone(String telephone) { this.telephone = telephone; }

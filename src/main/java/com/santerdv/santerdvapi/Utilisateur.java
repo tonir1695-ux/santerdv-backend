@@ -35,8 +35,32 @@ public class Utilisateur {
     @Column(name = "actif")
     private Boolean actif;
 
+    @Column(name = "email_verifie")
+    private Boolean emailVerifie = false;
+
+    @Column(name = "code_otp")
+    private String codeOtp;
+
+    @Column(name = "date_expiration_otp")
+    private java.time.LocalDateTime dateExpirationOtp;
+
+    @Column(name = "mot_de_passe_temporaire")
+    private Boolean motDePasseTemporaire = false;
+
     public Boolean getActif() { return actif; }
     public void setActif(Boolean actif) { this.actif = actif; }
+
+    public Boolean getEmailVerifie() { return emailVerifie; }
+    public void setEmailVerifie(Boolean emailVerifie) { this.emailVerifie = emailVerifie; }
+
+    public String getCodeOtp() { return codeOtp; }
+    public void setCodeOtp(String codeOtp) { this.codeOtp = codeOtp; }
+
+    public java.time.LocalDateTime getDateExpirationOtp() { return dateExpirationOtp; }
+    public void setDateExpirationOtp(java.time.LocalDateTime dateExpirationOtp) { this.dateExpirationOtp = dateExpirationOtp; }
+
+    public Boolean getMotDePasseTemporaire() { return motDePasseTemporaire; }
+    public void setMotDePasseTemporaire(Boolean motDePasseTemporaire) { this.motDePasseTemporaire = motDePasseTemporaire; }
 
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }

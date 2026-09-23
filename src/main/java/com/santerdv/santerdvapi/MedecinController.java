@@ -29,6 +29,9 @@ public class MedecinController {
     @Autowired
     private RappelSmsRepository rappelSmsRepository;
 
+    @Autowired
+    private EmailService emailService;
+
     @GetMapping
     public List<Medecin> getAllMedecins() {
         return medecinRepository.findAll();
@@ -46,15 +49,21 @@ public class MedecinController {
             return ResponseEntity.badRequest().body("Cet email est déjà utilisé.");
         }
 
+        // Le mot de passe n'est jamais fourni par l'admin : on le génère,
+        // on le hache pour le stockage, et on envoie la version en clair par email.
+        String motDePasseTemporaire = SecuriteUtil.genererMotDePasseTemporaire();
+
         Utilisateur utilisateur = new Utilisateur();
         utilisateur.setNom(requete.getNom());
         utilisateur.setPrenom(requete.getPrenom());
         utilisateur.setEmail(requete.getEmail());
-        utilisateur.setMotDePasse(requete.getMotDePasse());
+        utilisateur.setMotDePasse(SecuriteUtil.hacher(motDePasseTemporaire));
         utilisateur.setTelephone(requete.getTelephone());
         utilisateur.setRole("medecin");
         utilisateur.setLanguePreferee("fr");
         utilisateur.setActif(true);
+        utilisateur.setEmailVerifie(true); // compte créé par l'admin : pas besoin d'OTP
+        utilisateur.setMotDePasseTemporaire(true);
 
         Utilisateur utilisateurCree = utilisateurRepository.save(utilisateur);
 
@@ -66,7 +75,36 @@ public class MedecinController {
 
         Medecin medecinCree = medecinRepository.save(medecin);
 
+        emailService.envoyerIdentifiants(requete.getEmail(), requete.getPrenom(), "médecin", motDePasseTemporaire);
+
         return ResponseEntity.ok(medecinCree);
+    }
+
+    @PutMapping("/{id}/modifier")
+    public ResponseEntity<?> modifierMedecin(@PathVariable Integer id, @RequestBody CreerMedecinRequest requete) {
+        Optional<Medecin> medecinOpt = medecinRepository.findById(id);
+        if (medecinOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Médecin introuvable.");
+        }
+        Optional<Utilisateur> utilisateurOpt = utilisateurRepository.findById(id);
+        if (utilisateurOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Utilisateur introuvable.");
+        }
+
+        Utilisateur u = utilisateurOpt.get();
+        if (requete.getNom() != null) u.setNom(requete.getNom());
+        if (requete.getPrenom() != null) u.setPrenom(requete.getPrenom());
+        if (requete.getTelephone() != null) u.setTelephone(requete.getTelephone());
+        utilisateurRepository.save(u);
+
+        Medecin medecin = medecinOpt.get();
+        if (requete.getIdSpecialite() != null) {
+            Optional<Specialite> specialite = specialiteRepository.findById(requete.getIdSpecialite());
+            specialite.ifPresent(medecin::setSpecialite);
+        }
+        medecinRepository.save(medecin);
+
+        return ResponseEntity.ok(medecin);
     }
 
     @PutMapping("/{id}/statut")
