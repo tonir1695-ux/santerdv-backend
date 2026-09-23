@@ -21,10 +21,10 @@ import java.util.Map;
 @Service
 public class EmailService {
 
-    @Value("${brevo.api.key}")
+    @Value("${brevo.api.key:}")
     private String brevoApiKey;
 
-    @Value("${brevo.sender.email}")
+    @Value("${brevo.sender.email:}")
     private String senderEmail;
 
     @Value("${brevo.sender.name:Santé RDV}")
@@ -37,6 +37,10 @@ public class EmailService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public void envoyerEmail(String destinataire, String sujet, String contenu) {
+        if (brevoApiKey == null || brevoApiKey.isBlank()) {
+            System.err.println("[EmailService] BREVO_API_KEY non configurée — email non envoyé à " + destinataire);
+            return;
+        }
         try {
             Map<String, Object> body = new HashMap<>();
             body.put("sender", Map.of("name", senderName, "email", senderEmail));
