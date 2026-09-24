@@ -50,7 +50,7 @@ public class EmailService {
                     "user_id", publicKey,
                     "accessToken", privateKey,
                     "template_params", Map.of(
-                            "to_email", destinataire,
+                            "email", destinataire,
                             "subject", sujet,
                             "message", contenu
                     )
