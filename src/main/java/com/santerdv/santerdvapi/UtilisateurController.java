@@ -47,11 +47,17 @@ public class UtilisateurController {
      */
     @PostMapping("/inscription")
     public ResponseEntity<?> inscription(@RequestBody Utilisateur utilisateur) {
+        if (!ValidationUtil.estNomValide(utilisateur.getNom()) || !ValidationUtil.estNomValide(utilisateur.getPrenom())) {
+            return ResponseEntity.badRequest().body("Le nom et le prénom ne doivent contenir que des lettres.");
+        }
+        if (!ValidationUtil.estEmailValide(utilisateur.getEmail())) {
+            return ResponseEntity.badRequest().body("Adresse email invalide.");
+        }
+        if (!ValidationUtil.estTelephoneValide(utilisateur.getTelephone())) {
+            return ResponseEntity.badRequest().body("Numéro de téléphone invalide (format togolais attendu : 8 chiffres, ex. 90123456).");
+        }
         if (utilisateurRepository.findByEmail(utilisateur.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body("Cet email est déjà utilisé.");
-        }
-        if (utilisateur.getEmail() == null || !utilisateur.getEmail().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
-            return ResponseEntity.badRequest().body("Adresse email invalide.");
         }
 
         utilisateur.setMotDePasse(SecuriteUtil.hacher(utilisateur.getMotDePasse()));

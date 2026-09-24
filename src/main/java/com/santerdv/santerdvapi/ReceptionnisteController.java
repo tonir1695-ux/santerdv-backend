@@ -24,6 +24,15 @@ public class ReceptionnisteController {
 
     @PostMapping("/creer")
     public ResponseEntity<?> creerReceptionniste(@RequestBody CreerReceptionnisteRequest requete) {
+        if (!ValidationUtil.estNomValide(requete.getNom()) || !ValidationUtil.estNomValide(requete.getPrenom())) {
+            return ResponseEntity.badRequest().body("Le nom et le prénom ne doivent contenir que des lettres.");
+        }
+        if (!ValidationUtil.estEmailValide(requete.getEmail())) {
+            return ResponseEntity.badRequest().body("Adresse email invalide.");
+        }
+        if (!ValidationUtil.estTelephoneValide(requete.getTelephone())) {
+            return ResponseEntity.badRequest().body("Numéro de téléphone invalide (format togolais attendu : 8 chiffres).");
+        }
         if (utilisateurRepository.findByEmail(requete.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body("Cet email est déjà utilisé.");
         }

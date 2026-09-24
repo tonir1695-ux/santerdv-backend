@@ -40,6 +40,16 @@ public class MedecinController {
     @PostMapping("/creer")
     public ResponseEntity<?> creerMedecin(@RequestBody CreerMedecinRequest requete) {
 
+        if (!ValidationUtil.estNomValide(requete.getNom()) || !ValidationUtil.estNomValide(requete.getPrenom())) {
+            return ResponseEntity.badRequest().body("Le nom et le prénom ne doivent contenir que des lettres.");
+        }
+        if (!ValidationUtil.estEmailValide(requete.getEmail())) {
+            return ResponseEntity.badRequest().body("Adresse email invalide.");
+        }
+        if (!ValidationUtil.estTelephoneValide(requete.getTelephone())) {
+            return ResponseEntity.badRequest().body("Numéro de téléphone invalide (format togolais attendu : 8 chiffres).");
+        }
+
         Optional<Specialite> specialite = specialiteRepository.findById(requete.getIdSpecialite());
         if (specialite.isEmpty()) {
             return ResponseEntity.badRequest().body("Spécialité introuvable.");
