@@ -9,26 +9,28 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Service d'envoi d'emails via l'API HTTP de Brevo (et non le SMTP direct :
- * Render bloque les connexions SMTP sortantes sur son infrastructure gratuite,
- * l'API HTTP passe par le port 443 qui n'est jamais bloqué).
+ * Service d'envoi d'emails via l'API HTTP d'EmailJS (port 443, jamais bloqué
+ * par Render). EmailJS envoie à travers un compte Gmail personnel connecté
+ * par autorisation Google classique — pas de mot de passe d'application,
+ * pas de vérification d'entreprise nécessaire.
  */
 @Service
 public class EmailService {
 
-    @Value("${brevo.api.key:}")
-    private String brevoApiKey;
+    @Value("${emailjs.service.id:}")
+    private String serviceId;
 
-    @Value("${brevo.sender.email:}")
-    private String senderEmail;
+    @Value("${emailjs.template.id:}")
+    private String templateId;
 
-    @Value("${brevo.sender.name:Santé RDV}")
-    private String senderName;
+    @Value("${emailjs.public.key:}")
+    private String publicKey;
+
+    @Value("${emailjs.private.key:}")
+    private String privateKey;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -37,25 +39,29 @@ public class EmailService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public void envoyerEmail(String destinataire, String sujet, String contenu) {
-        if (brevoApiKey == null || brevoApiKey.isBlank()) {
-            System.err.println("[EmailService] BREVO_API_KEY non configurée — email non envoyé à " + destinataire);
+        if (serviceId == null || serviceId.isBlank() || templateId == null || templateId.isBlank()) {
+            System.err.println("[EmailService] Configuration EmailJS incomplète — email non envoyé à " + destinataire);
             return;
         }
         try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("sender", Map.of("name", senderName, "email", senderEmail));
-            body.put("to", List.of(Map.of("email", destinataire)));
-            body.put("subject", sujet);
-            body.put("textContent", contenu);
-
+            Map<String, Object> body = Map.of(
+                    "service_id", serviceId,
+                    "template_id", templateId,
+                    "user_id", publicKey,
+                    "accessToken", privateKey,
+                    "template_params", Map.of(
+                            "to_email", destinataire,
+                            "subject", sujet,
+                            "message", contenu
+                    )
+            );
             String jsonBody = objectMapper.writeValueAsString(body);
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
+                    .uri(URI.create("https://api.emailjs.com/api/v1.0/email/send"))
                     .timeout(Duration.ofSeconds(15))
-                    .header("accept", "application/json")
-                    .header("api-key", brevoApiKey)
-                    .header("content-type", "application/json")
+                    .header("Content-Type", "application/json")
+                    .header("origin", "http://localhost")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
@@ -68,8 +74,6 @@ public class EmailService {
                         + " — code " + response.statusCode() + " : " + response.body());
             }
         } catch (Exception e) {
-            // On ne fait pas planter la requête si l'email échoue :
-            // on log l'erreur pour diagnostic (à surveiller dans les logs Render).
             System.err.println("[EmailService] Échec d'envoi à " + destinataire + " : " + e.getMessage());
         }
     }
