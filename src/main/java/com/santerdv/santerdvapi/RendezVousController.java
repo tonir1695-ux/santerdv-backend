@@ -33,6 +33,9 @@ public class RendezVousController {
     @Autowired
     private JourDisponibiliteRepository jourDisponibiliteRepository;
 
+    @Autowired
+    private EmailService emailService;
+
 
     @PutMapping("/{id}/annuler")
     public ResponseEntity<?> annulerRendezVous(@PathVariable Integer id, @RequestParam Integer idUtilisateurConnecte) {
@@ -150,6 +153,15 @@ public class RendezVousController {
 
         if (patient.isEmpty() || medecin.isEmpty()) {
             return ResponseEntity.badRequest().body("Patient ou médecin introuvable.");
+        }
+
+        String typeConsultation = requete.getTypeConsultation() == null ? "cabinet" : requete.getTypeConsultation();
+        if (!"cabinet".equals(typeConsultation) && !"domicile".equals(typeConsultation)) {
+            return ResponseEntity.badRequest().body("Type de consultation invalide (cabinet ou domicile attendu).");
+        }
+        if ("domicile".equals(typeConsultation) &&
+                (requete.getAdresseDomicile() == null || requete.getAdresseDomicile().trim().length() < 5)) {
+            return ResponseEntity.badRequest().body("Merci de préciser une adresse pour la consultation à domicile.");
         }
 
         LocalDateTime nouvelleDateHeure = requete.getDateHeure();
@@ -288,15 +300,22 @@ public class RendezVousController {
         rdv.setDateHeure(nouvelleDateHeure);
         rdv.setStatut("confirme");
         rdv.setDateCreation(LocalDateTime.now());
+        rdv.setTypeConsultation(typeConsultation);
+        rdv.setAdresseDomicile("domicile".equals(typeConsultation) ? requete.getAdresseDomicile().trim() : null);
+        rdv.setLatitudeDomicile("domicile".equals(typeConsultation) ? requete.getLatitudeDomicile() : null);
+        rdv.setLongitudeDomicile("domicile".equals(typeConsultation) ? requete.getLongitudeDomicile() : null);
 
         RendezVous nouveau = rendezVousRepository.save(rdv);
 
-        // Envoi automatique du rappel SMS simulé
+        // Envoi automatique du rappel : SMS (simulé) + email (réel, via EmailService)
         String nomMedecinMsg = medecin.get().getUtilisateur() != null
                 ? "Dr " + medecin.get().getUtilisateur().getPrenom() + " " + medecin.get().getUtilisateur().getNom()
                 : "le médecin";
         String dateFormatee = nouveau.getDateHeure().toString().replace("T", " à ");
-        String texteMessage = "Rappel : vous avez un rendez-vous le " + dateFormatee + " avec " + nomMedecinMsg + ".";
+        String lieuMsg = "domicile".equals(typeConsultation)
+                ? " (consultation à domicile : " + rdv.getAdresseDomicile() + ")"
+                : " (consultation au cabinet)";
+        String texteMessage = "Rappel : vous avez un rendez-vous le " + dateFormatee + " avec " + nomMedecinMsg + lieuMsg + ".";
         boolean envoye = smsService.envoyerSms("numéro du patient", texteMessage);
 
         RappelSms rappel = new RappelSms();
@@ -305,6 +324,14 @@ public class RendezVousController {
         rappel.setStatutEnvoi(envoye ? "envoye" : "echoue");
         rappel.setMessage(texteMessage);
         rappelSmsRepository.save(rappel);
+
+        if (patient.get().getUtilisateur() != null && patient.get().getUtilisateur().getEmail() != null) {
+            emailService.envoyerRappelRendezVous(
+                    patient.get().getUtilisateur().getEmail(),
+                    patient.get().getUtilisateur().getPrenom(),
+                    texteMessage
+            );
+        }
 
         return ResponseEntity.ok(nouveau);
     }

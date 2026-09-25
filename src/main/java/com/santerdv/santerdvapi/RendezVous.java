@@ -38,6 +38,31 @@ public class RendezVous {
     @Column(name = "annule_le")
     private LocalDateTime annuleLe;
 
+    // "cabinet" (par défaut) ou "domicile"
+    @Column(name = "type_consultation")
+    private String typeConsultation = "cabinet";
+
+    @Column(name = "adresse_domicile")
+    private String adresseDomicile;
+
+    @Column(name = "latitude_domicile")
+    private Double latitudeDomicile;
+
+    @Column(name = "longitude_domicile")
+    private Double longitudeDomicile;
+
+    public Double getLatitudeDomicile() { return latitudeDomicile; }
+    public void setLatitudeDomicile(Double latitudeDomicile) { this.latitudeDomicile = latitudeDomicile; }
+
+    public Double getLongitudeDomicile() { return longitudeDomicile; }
+    public void setLongitudeDomicile(Double longitudeDomicile) { this.longitudeDomicile = longitudeDomicile; }
+
+    public String getTypeConsultation() { return typeConsultation; }
+    public void setTypeConsultation(String typeConsultation) { this.typeConsultation = typeConsultation; }
+
+    public String getAdresseDomicile() { return adresseDomicile; }
+    public void setAdresseDomicile(String adresseDomicile) { this.adresseDomicile = adresseDomicile; }
+
     public String getAnnuleParNom() { return annuleParNom; }
     public void setAnnuleParNom(String annuleParNom) { this.annuleParNom = annuleParNom; }
 
