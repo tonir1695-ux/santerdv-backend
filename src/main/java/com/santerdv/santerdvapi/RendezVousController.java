@@ -95,6 +95,55 @@ public class RendezVousController {
         return ResponseEntity.ok(rdv);
     }
 
+    /**
+     * Fait évoluer le statut du rendez-vous suivant le cycle :
+     * confirme → en_cours → termine (le passage de l'heure seule ne suffit
+     * pas : c'est le médecin, ou l'admin/réceptionniste, qui déclenche chaque étape).
+     */
+    @PutMapping("/{id}/demarrer")
+    public ResponseEntity<?> demarrerConsultation(@PathVariable Integer id, @RequestParam Integer idUtilisateurConnecte) {
+        return changerStatutCycle(id, idUtilisateurConnecte, "confirme", "en_cours");
+    }
+
+    @PutMapping("/{id}/terminer")
+    public ResponseEntity<?> terminerConsultation(@PathVariable Integer id, @RequestParam Integer idUtilisateurConnecte) {
+        return changerStatutCycle(id, idUtilisateurConnecte, "en_cours", "termine");
+    }
+
+    private ResponseEntity<?> changerStatutCycle(Integer id, Integer idUtilisateurConnecte, String statutAttendu, String nouveauStatut) {
+        Optional<RendezVous> rdvOpt = rendezVousRepository.findById(id);
+        if (rdvOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Rendez-vous introuvable.");
+        }
+
+        Optional<Utilisateur> utilisateurOpt = utilisateurRepository.findById(idUtilisateurConnecte);
+        if (utilisateurOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Utilisateur introuvable.");
+        }
+
+        RendezVous rdv = rdvOpt.get();
+        String role = utilisateurOpt.get().getRole();
+
+        boolean autorise =
+                ("medecin".equals(role) && rdv.getMedecin().getId().equals(idUtilisateurConnecte)) ||
+                        "admin".equals(role) || "receptionniste".equals(role);
+
+        if (!autorise) {
+            return ResponseEntity.status(403).body("Vous n'êtes pas autorisé à modifier ce rendez-vous.");
+        }
+
+        if (!statutAttendu.equals(rdv.getStatut())) {
+            return ResponseEntity.badRequest().body(
+                    "Transition impossible : le rendez-vous doit être au statut \"" + statutAttendu
+                            + "\" (statut actuel : \"" + rdv.getStatut() + "\").");
+        }
+
+        rdv.setStatut(nouveauStatut);
+        rendezVousRepository.save(rdv);
+
+        return ResponseEntity.ok(rdv);
+    }
+
     @GetMapping("/annules")
     public List<RendezVous> getRendezVousAnnules() {
         return rendezVousRepository.findAll().stream()
