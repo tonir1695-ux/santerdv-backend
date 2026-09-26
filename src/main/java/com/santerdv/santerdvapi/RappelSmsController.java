@@ -55,6 +55,11 @@ public class RappelSmsController {
         return rappelSmsRepository.findAll()
                 .stream()
                 .filter(r -> r.getRendezVous().getPatient().getId().equals(idPatient))
+                .sorted((a, b) -> {
+                    if (a.getDateEnvoi() == null) return 1;
+                    if (b.getDateEnvoi() == null) return -1;
+                    return b.getDateEnvoi().compareTo(a.getDateEnvoi());
+                })
                 .toList();
     }
 }
