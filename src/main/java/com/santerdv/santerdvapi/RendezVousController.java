@@ -82,7 +82,9 @@ public class RendezVousController {
         if ("patient".equals(role)) {
             messageNotif = "Vous avez annulé votre rendez-vous du " + dateTexte + " avec " + nomMedecin + ".";
         } else {
-            messageNotif = "⚠ Votre rendez-vous du " + dateTexte + " avec " + nomMedecin + " a été annulé. Merci de reprendre un rendez-vous si besoin.";
+            messageNotif = "⚠ Votre rendez-vous du " + dateTexte + " avec " + nomMedecin
+                    + " a été annulé. Le médecin est peut-être disponible à un autre créneau — "
+                    + "vous pouvez reprendre un nouveau rendez-vous directement depuis l'application.";
         }
 
         RappelSms notif = new RappelSms();
@@ -100,6 +102,15 @@ public class RendezVousController {
      * confirme → en_cours → termine (le passage de l'heure seule ne suffit
      * pas : c'est le médecin, ou l'admin/réceptionniste, qui déclenche chaque étape).
      */
+    /**
+     * Le médecin (ou l'admin/réceptionniste) confirme une demande de rendez-vous.
+     * en_attente → confirme.
+     */
+    @PutMapping("/{id}/confirmer")
+    public ResponseEntity<?> confirmerRendezVous(@PathVariable Integer id, @RequestParam Integer idUtilisateurConnecte) {
+        return changerStatutCycle(id, idUtilisateurConnecte, "en_attente", "confirme");
+    }
+
     @PutMapping("/{id}/demarrer")
     public ResponseEntity<?> demarrerConsultation(@PathVariable Integer id, @RequestParam Integer idUtilisateurConnecte) {
         return changerStatutCycle(id, idUtilisateurConnecte, "confirme", "en_cours");
@@ -347,7 +358,7 @@ public class RendezVousController {
         rdv.setPatient(patient.get());
         rdv.setMedecin(medecin.get());
         rdv.setDateHeure(nouvelleDateHeure);
-        rdv.setStatut("confirme");
+        rdv.setStatut("en_attente");
         rdv.setDateCreation(LocalDateTime.now());
         rdv.setTypeConsultation(typeConsultation);
         rdv.setAdresseDomicile("domicile".equals(typeConsultation) ? requete.getAdresseDomicile().trim() : null);
