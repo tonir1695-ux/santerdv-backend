@@ -29,6 +29,13 @@ public class Utilisateur {
     @Column(name = "role")
     private String role;
 
+    @ManyToOne
+    @JoinColumn(name = "id_etablissement")
+    private Etablissement etablissement;
+
+    public Etablissement getEtablissement() { return etablissement; }
+    public void setEtablissement(Etablissement etablissement) { this.etablissement = etablissement; }
+
     @Column(name = "langue_preferee")
     private String languePreferee;
 

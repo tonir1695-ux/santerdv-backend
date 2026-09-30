@@ -17,9 +17,18 @@ public class ReceptionnisteController {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private EtablissementRepository etablissementRepository;
+
     @GetMapping
-    public List<Utilisateur> getAllReceptionnistes() {
-        return utilisateurRepository.findByRole("receptionniste");
+    public List<Utilisateur> getAllReceptionnistes(@RequestParam(required = false) Integer idEtablissement) {
+        List<Utilisateur> tous = utilisateurRepository.findByRole("receptionniste");
+        if (idEtablissement == null) {
+            return tous;
+        }
+        return tous.stream()
+                .filter(u -> u.getEtablissement() != null && idEtablissement.equals(u.getEtablissement().getId()))
+                .toList();
     }
 
     @PostMapping("/creer")
@@ -50,6 +59,10 @@ public class ReceptionnisteController {
         utilisateur.setActif(true);
         utilisateur.setEmailVerifie(true);
         utilisateur.setMotDePasseTemporaire(true);
+
+        if (requete.getIdEtablissement() != null) {
+            etablissementRepository.findById(requete.getIdEtablissement()).ifPresent(utilisateur::setEtablissement);
+        }
 
         Utilisateur cree = utilisateurRepository.save(utilisateur);
 

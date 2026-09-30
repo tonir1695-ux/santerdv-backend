@@ -5,6 +5,10 @@ public class CreerReceptionnisteRequest {
     private String prenom;
     private String email;
     private String telephone;
+    private Integer idEtablissement;
+
+    public Integer getIdEtablissement() { return idEtablissement; }
+    public void setIdEtablissement(Integer idEtablissement) { this.idEtablissement = idEtablissement; }
 
     public String getNom() { return nom; }
     public void setNom(String nom) { this.nom = nom; }

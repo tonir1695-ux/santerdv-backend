@@ -32,9 +32,19 @@ public class MedecinController {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private EtablissementRepository etablissementRepository;
+
     @GetMapping
-    public List<Medecin> getAllMedecins() {
-        return medecinRepository.findAll();
+    public List<Medecin> getAllMedecins(@RequestParam(required = false) Integer idEtablissement) {
+        List<Medecin> tous = medecinRepository.findAll();
+        if (idEtablissement == null) {
+            return tous;
+        }
+        return tous.stream()
+                .filter(m -> m.getUtilisateur() != null && m.getUtilisateur().getEtablissement() != null
+                        && idEtablissement.equals(m.getUtilisateur().getEtablissement().getId()))
+                .toList();
     }
 
     @PostMapping("/creer")
@@ -74,6 +84,10 @@ public class MedecinController {
         utilisateur.setActif(true);
         utilisateur.setEmailVerifie(true); // compte créé par l'admin : pas besoin d'OTP
         utilisateur.setMotDePasseTemporaire(true);
+
+        if (requete.getIdEtablissement() != null) {
+            etablissementRepository.findById(requete.getIdEtablissement()).ifPresent(utilisateur::setEtablissement);
+        }
 
         Utilisateur utilisateurCree = utilisateurRepository.save(utilisateur);
 
