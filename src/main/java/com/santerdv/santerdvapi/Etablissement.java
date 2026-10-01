@@ -20,6 +20,24 @@ public class Etablissement {
     @Column(name = "adresse")
     private String adresse;
 
+    @Column(name = "quartier")
+    private String quartier;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    public String getQuartier() { return quartier; }
+    public void setQuartier(String quartier) { this.quartier = quartier; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
     @Column(name = "telephone")
     private String telephone;
 

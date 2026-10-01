@@ -57,6 +57,9 @@ public class EtablissementController {
         etablissement.setNom(requete.getNomEtablissement().trim());
         etablissement.setTypeEtablissement(requete.getTypeEtablissement());
         etablissement.setAdresse(requete.getAdresse());
+        etablissement.setQuartier(requete.getQuartier());
+        etablissement.setLatitude(requete.getLatitude());
+        etablissement.setLongitude(requete.getLongitude());
         etablissement.setTelephone(requete.getTelephoneEtablissement());
         etablissement.setActif(true);
         Etablissement etablissementCree = etablissementRepository.save(etablissement);
@@ -93,6 +96,9 @@ public class EtablissementController {
         if (donnees.getNom() != null) etab.setNom(donnees.getNom());
         if (donnees.getTypeEtablissement() != null) etab.setTypeEtablissement(donnees.getTypeEtablissement());
         if (donnees.getAdresse() != null) etab.setAdresse(donnees.getAdresse());
+        if (donnees.getQuartier() != null) etab.setQuartier(donnees.getQuartier());
+        if (donnees.getLatitude() != null) etab.setLatitude(donnees.getLatitude());
+        if (donnees.getLongitude() != null) etab.setLongitude(donnees.getLongitude());
         if (donnees.getTelephone() != null) etab.setTelephone(donnees.getTelephone());
         etablissementRepository.save(etab);
         return ResponseEntity.ok(etab);

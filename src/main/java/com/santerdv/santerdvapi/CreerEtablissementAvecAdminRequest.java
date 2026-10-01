@@ -4,7 +4,14 @@ public class CreerEtablissementAvecAdminRequest {
     private String nomEtablissement;
     private String typeEtablissement;
     private String adresse;
+    private String quartier;
+    private Double latitude;
+    private Double longitude;
     private String telephoneEtablissement;
+
+    public String getQuartier() { return quartier; }
+    public Double getLatitude() { return latitude; }
+    public Double getLongitude() { return longitude; }
 
     private String nomAdmin;
     private String prenomAdmin;
