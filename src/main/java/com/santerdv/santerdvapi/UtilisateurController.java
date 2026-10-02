@@ -22,6 +22,9 @@ public class UtilisateurController {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private EtablissementRepository etablissementRepository;
+
     @GetMapping
     public List<Utilisateur> getAllUtilisateurs() {
         return utilisateurRepository.findAll();
@@ -183,5 +186,112 @@ public class UtilisateurController {
         u.setActif(body.get("actif"));
         utilisateurRepository.save(u);
         return ResponseEntity.ok(u);
+    }
+
+    /**
+     * Modifie les informations d'un compte (nom, prénom, téléphone, et pour un
+     * admin d'établissement, éventuellement son rattachement). Utilisé par le
+     * Super Admin (patients, administrateurs) comme par l'admin d'établissement.
+     */
+    @PutMapping("/admin/{id}/modifier-info")
+    public ResponseEntity<?> modifierInfoCompte(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        Optional<Utilisateur> trouve = utilisateurRepository.findById(id);
+        if (trouve.isEmpty()) {
+            return ResponseEntity.badRequest().body("Utilisateur introuvable.");
+        }
+        Utilisateur u = trouve.get();
+
+        if (body.get("nom") != null) {
+            if (!ValidationUtil.estNomValide((String) body.get("nom"))) {
+                return ResponseEntity.badRequest().body("Nom invalide.");
+            }
+            u.setNom((String) body.get("nom"));
+        }
+        if (body.get("prenom") != null) {
+            if (!ValidationUtil.estNomValide((String) body.get("prenom"))) {
+                return ResponseEntity.badRequest().body("Prénom invalide.");
+            }
+            u.setPrenom((String) body.get("prenom"));
+        }
+        if (body.get("telephone") != null) {
+            if (!ValidationUtil.estTelephoneValide((String) body.get("telephone"))) {
+                return ResponseEntity.badRequest().body("Téléphone invalide.");
+            }
+            u.setTelephone((String) body.get("telephone"));
+        }
+        if (body.get("idEtablissement") != null) {
+            Integer idEtab = ((Number) body.get("idEtablissement")).intValue();
+            etablissementRepository.findById(idEtab).ifPresent(u::setEtablissement);
+        }
+
+        utilisateurRepository.save(u);
+        return ResponseEntity.ok(u);
+    }
+
+    /**
+     * Réinitialise l'accès d'un compte : génère un nouveau mot de passe
+     * temporaire et le renvoie par email (le compte redevient "mot de passe
+     * temporaire" comme à sa création).
+     */
+    @PutMapping("/admin/{id}/reinitialiser-acces")
+    public ResponseEntity<?> reinitialiserAcces(@PathVariable Integer id) {
+        Optional<Utilisateur> trouve = utilisateurRepository.findById(id);
+        if (trouve.isEmpty()) {
+            return ResponseEntity.badRequest().body("Utilisateur introuvable.");
+        }
+        Utilisateur u = trouve.get();
+        String nouveauMotDePasse = SecuriteUtil.genererMotDePasseTemporaire();
+        u.setMotDePasse(SecuriteUtil.hacher(nouveauMotDePasse));
+        u.setMotDePasseTemporaire(true);
+        utilisateurRepository.save(u);
+
+        emailService.envoyerIdentifiants(u.getEmail(), u.getPrenom(), u.getRole(), nouveauMotDePasse);
+
+        return ResponseEntity.ok(Map.of("message", "Accès réinitialisé, nouveaux identifiants envoyés par email."));
+    }
+
+    /**
+     * Un admin ou une réceptionniste enregistre directement un patient (accueil
+     * physique) : compte actif et vérifié immédiatement, identifiants envoyés
+     * par email — pas d'étape OTP puisque la personne est déjà présente.
+     */
+    @PostMapping("/admin/creer-patient")
+    public ResponseEntity<?> creerPatientParAccueil(@RequestBody Utilisateur requete) {
+        if (!ValidationUtil.estNomValide(requete.getNom()) || !ValidationUtil.estNomValide(requete.getPrenom())) {
+            return ResponseEntity.badRequest().body("Le nom et le prénom ne doivent contenir que des lettres.");
+        }
+        if (!ValidationUtil.estEmailValide(requete.getEmail())) {
+            return ResponseEntity.badRequest().body("Adresse email invalide.");
+        }
+        if (!ValidationUtil.estTelephoneValide(requete.getTelephone())) {
+            return ResponseEntity.badRequest().body("Numéro de téléphone invalide.");
+        }
+        if (utilisateurRepository.findByEmail(requete.getEmail()).isPresent()) {
+            return ResponseEntity.badRequest().body("Cet email est déjà utilisé.");
+        }
+
+        String motDePasseTemporaire = SecuriteUtil.genererMotDePasseTemporaire();
+
+        Utilisateur patient = new Utilisateur();
+        patient.setNom(requete.getNom());
+        patient.setPrenom(requete.getPrenom());
+        patient.setEmail(requete.getEmail());
+        patient.setTelephone(requete.getTelephone());
+        patient.setMotDePasse(SecuriteUtil.hacher(motDePasseTemporaire));
+        patient.setRole("patient");
+        patient.setLanguePreferee("fr");
+        patient.setActif(true);
+        patient.setEmailVerifie(true);
+        patient.setMotDePasseTemporaire(true);
+
+        Utilisateur patientCree = utilisateurRepository.save(patient);
+
+        Patient fichePatient = new Patient();
+        fichePatient.setId(patientCree.getId());
+        patientRepository.save(fichePatient);
+
+        emailService.envoyerIdentifiants(requete.getEmail(), requete.getPrenom(), "patient", motDePasseTemporaire);
+
+        return ResponseEntity.ok(patientCree);
     }
 }
