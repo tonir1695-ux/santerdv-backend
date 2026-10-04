@@ -29,6 +29,20 @@ public class Etablissement {
     @Column(name = "longitude")
     private Double longitude;
 
+    // Frais fixes additionnels, définis par l'établissement (valeurs de démo
+    // par défaut — modifiables plus tard par l'admin d'établissement).
+    @Column(name = "frais_carnet")
+    private Double fraisCarnet = 500.0;
+
+    @Column(name = "frais_service")
+    private Double fraisService = 500.0;
+
+    public Double getFraisCarnet() { return fraisCarnet; }
+    public void setFraisCarnet(Double fraisCarnet) { this.fraisCarnet = fraisCarnet; }
+
+    public Double getFraisService() { return fraisService; }
+    public void setFraisService(Double fraisService) { this.fraisService = fraisService; }
+
     public String getQuartier() { return quartier; }
     public void setQuartier(String quartier) { this.quartier = quartier; }
 

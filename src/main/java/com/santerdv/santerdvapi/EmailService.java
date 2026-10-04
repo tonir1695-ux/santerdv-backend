@@ -99,6 +99,21 @@ public class EmailService {
         envoyerEmail(destinataire, sujet, contenu);
     }
 
+    public void envoyerConfirmationPaiement(String destinataire, String prenom, String nomAutrePersonne, double montant, boolean estPourPatient) {
+        String sujet = "Santé RDV — Paiement confirmé";
+        String contenu;
+        if (estPourPatient) {
+            contenu = "Bonjour " + prenom + ",\n\n"
+                    + "Votre paiement de " + (int) montant + " FCFA pour votre consultation avec " + nomAutrePersonne
+                    + " a été effectué avec succès.\n\nCeci est votre reçu.\n\nL'équipe Santé RDV";
+        } else {
+            contenu = "Bonjour " + prenom + ",\n\n"
+                    + "Le patient " + nomAutrePersonne + " vient de payer sa consultation : " + (int) montant + " FCFA.\n\n"
+                    + "L'équipe Santé RDV";
+        }
+        envoyerEmail(destinataire, sujet, contenu);
+    }
+
     public void envoyerRappelRendezVous(String destinataire, String prenom, String infosRendezVous) {
         String sujet = "Santé RDV — Rappel de rendez-vous";
         String contenu = "Bonjour " + prenom + ",\n\n"

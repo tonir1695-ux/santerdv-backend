@@ -28,6 +28,12 @@ public class RendezVousController {
     private RappelSmsRepository rappelSmsRepository;
 
     @Autowired
+    private TarifConsultationRepository tarifConsultationRepository;
+
+    @Autowired
+    private FactureRepository factureRepository;
+
+    @Autowired
     private SmsService smsService;
 
     @Autowired
@@ -108,7 +114,67 @@ public class RendezVousController {
      */
     @PutMapping("/{id}/confirmer")
     public ResponseEntity<?> confirmerRendezVous(@PathVariable Integer id, @RequestParam Integer idUtilisateurConnecte) {
-        return changerStatutCycle(id, idUtilisateurConnecte, "en_attente", "confirme");
+        ResponseEntity<?> resultat = changerStatutCycle(id, idUtilisateurConnecte, "en_attente", "confirme");
+        if (resultat.getStatusCode().is2xxSuccessful()) {
+            genererFacture(id);
+        }
+        return resultat;
+    }
+
+    /**
+     * Calcule et enregistre la facture d'un rendez-vous dès sa confirmation :
+     * tarif de consultation (médecin, sinon établissement+spécialité), frais de
+     * déplacement par tranche de distance si consultation à domicile, et frais
+     * fixes (carnet, service) définis par l'établissement.
+     */
+    private void genererFacture(Integer idRendezVous) {
+        if (factureRepository.findByRendezVousId(idRendezVous).isPresent()) {
+            return; // déjà générée (sécurité en cas de double appel)
+        }
+        Optional<RendezVous> rdvOpt = rendezVousRepository.findById(idRendezVous);
+        if (rdvOpt.isEmpty()) return;
+        RendezVous rdv = rdvOpt.get();
+        Medecin medecin = rdv.getMedecin();
+        if (medecin == null || medecin.getSpecialite() == null) return;
+
+        Etablissement etablissement = medecin.getUtilisateur() != null ? medecin.getUtilisateur().getEtablissement() : null;
+
+        Double montantConsultation = null;
+        Optional<TarifConsultation> tarifMedecin = tarifConsultationRepository.findByMedecinId(medecin.getId());
+        if (tarifMedecin.isPresent()) {
+            montantConsultation = tarifMedecin.get().getMontant();
+        } else if (etablissement != null) {
+            Optional<TarifConsultation> tarifEtab = tarifConsultationRepository
+                    .findByEtablissementIdAndSpecialiteIdAndMedecinIsNull(etablissement.getId(), medecin.getSpecialite().getId());
+            if (tarifEtab.isPresent()) montantConsultation = tarifEtab.get().getMontant();
+        }
+        if (montantConsultation == null) montantConsultation = 8000.0; // tarif de démonstration par défaut
+
+        double montantDeplacement = 0;
+        if ("domicile".equals(rdv.getTypeConsultation())) {
+            Double distance = null;
+            if (etablissement != null && etablissement.getLatitude() != null && etablissement.getLongitude() != null
+                    && rdv.getLatitudeDomicile() != null && rdv.getLongitudeDomicile() != null) {
+                distance = FacturationUtil.calculerDistanceKm(
+                        etablissement.getLatitude(), etablissement.getLongitude(),
+                        rdv.getLatitudeDomicile(), rdv.getLongitudeDomicile());
+            }
+            montantDeplacement = FacturationUtil.fraisDeplacement(distance);
+        }
+
+        double montantCarnet = etablissement != null && etablissement.getFraisCarnet() != null ? etablissement.getFraisCarnet() : 500.0;
+        double montantService = etablissement != null && etablissement.getFraisService() != null ? etablissement.getFraisService() : 500.0;
+
+        Facture facture = new Facture();
+        facture.setRendezVous(rdv);
+        facture.setMontantConsultation(montantConsultation);
+        facture.setMontantDeplacement(montantDeplacement);
+        facture.setMontantCarnet(montantCarnet);
+        facture.setMontantService(montantService);
+        facture.setMontantTotal(montantConsultation + montantDeplacement + montantCarnet + montantService);
+        facture.setStatut("en_attente");
+        facture.setDateCreation(LocalDateTime.now());
+        factureRepository.save(facture);
     }
 
     @PutMapping("/{id}/demarrer")

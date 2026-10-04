@@ -17,6 +17,12 @@ public class Patient {
     @Column(name = "adresse")
     private String adresse;
 
+    @Column(name = "solde_portefeuille")
+    private Double soldePortefeuille = 0.0;
+
+    public Double getSoldePortefeuille() { return soldePortefeuille; }
+    public void setSoldePortefeuille(Double soldePortefeuille) { this.soldePortefeuille = soldePortefeuille; }
+
     @OneToOne
     @JoinColumn(name = "id_patient", referencedColumnName = "id_utilisateur", insertable = false, updatable = false)
     private Utilisateur utilisateur;
